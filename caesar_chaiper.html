@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caesar Cipher</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#1c2430;--mute:#5d6b7c;--line:#cdd5de;--acc:#1f4e79;--accInk:#fff;--wheel:#dfe6ee;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171d;--card:#1b222b;--ink:#e6ebf1;--mute:#93a1b2;--line:#303b48;--acc:#6fa8dc;--accInk:#0e1620;--wheel:#26303b}}
+:root[data-theme="dark"]{--bg:#12171d;--card:#1b222b;--ink:#e6ebf1;--mute:#93a1b2;--line:#303b48;--acc:#6fa8dc;--accInk:#0e1620;--wheel:#26303b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:.3px}
+p.sub{margin:0 0 20px;color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+label{display:block;font-weight:bold;margin-bottom:6px}
+textarea{width:100%;min-height:110px;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+textarea:focus,button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--acc)}
+input[type=number]{width:64px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.seg{display:flex;border:1px solid var(--acc);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--acc);padding:8px 16px;font:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--accInk)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:6px;font:inherit;cursor:pointer}
+.out{white-space:pre-wrap;word-break:break-word;min-height:60px;font-family:"Courier New",monospace;font-size:17px}
+.map{overflow-x:auto;font-family:"Courier New",monospace;font-size:14px}
+.map table{border-collapse:collapse;margin:0 auto}
+.map td{padding:2px 5px;text-align:center;background:var(--wheel);border:1px solid var(--card)}
+.map tr:first-child td{font-weight:bold}
+.map tr:last-child td{background:var(--acc);color:var(--accInk);font-weight:bold}
+</style>
+</head>
+<body>
+<main>
+<h1>Caesar Cipher</h1>
+<p class="sub">Enkripsi dan dekripsi teks dengan menggeser setiap huruf sejauh kunci.</p>
+
+<div class="card">
+  <div class="row" style="margin-bottom:12px">
+    <div class="seg" role="group" aria-label="Mode">
+      <button id="mEnc" aria-pressed="true">Enkripsi</button>
+      <button id="mDec" aria-pressed="false">Dekripsi</button>
+    </div>
+    <button class="btn" id="bruteBtn">Brute force semua kunci</button>
+  </div>
+  <label for="inp">Teks masukan</label>
+  <textarea id="inp" placeholder="Tulis pesan di sini">Halo Dunia! Belajar kriptografi itu seru.</textarea>
+</div>
+
+<div class="card">
+  <label for="key">Kunci (geser): <span id="kv">3</span></label>
+  <div class="row">
+    <input type="range" id="key" min="1" max="25" value="3">
+    <input type="number" id="keyN" min="1" max="25" value="3" aria-label="Kunci angka">
+  </div>
+</div>
+
+<div class="card">
+  <label>Hasil</label>
+  <div class="out" id="out" aria-live="polite"></div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn" id="copy">Salin hasil</button>
+    <button class="btn" id="swap">Pakai hasil sebagai masukan</button>
+  </div>
+</div>
+
+<div class="card map">
+  <label>Pemetaan huruf (kunci <span id="kv2">3</span>)</label>
+  <table id="tbl"></table>
+</div>
+
+<div class="card" id="brute" hidden>
+  <label>Semua kemungkinan kunci</label>
+  <div class="out" id="bruteOut" style="font-size:14px"></div>
+</div>
+</main>
+
+<script>
+function caesar(text, shift) {
+  shift = ((shift % 26) + 26) % 26;
+  let r = "";
+  for (const ch of text) {
+    const c = ch.charCodeAt(0);
+    if (c >= 65 && c <= 90) r += String.fromCharCode((c - 65 + shift) % 26 + 65);
+    else if (c >= 97 && c <= 122) r += String.fromCharCode((c - 97 + shift) % 26 + 97);
+    else r += ch;
+  }
+  return r;
+}
+
+const $ = id => document.getElementById(id);
+let mode = "enc";
+
+function k() { return Math.min(25, Math.max(1, parseInt($("key").value) || 1)); }
+
+function run() {
+  const key = k();
+  $("kv").textContent = $("kv2").textContent = key;
+  const shift = mode === "enc" ? key : -key;
+  $("out").textContent = caesar($("inp").value, shift);
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let top = "", bot = "";
+  for (const ch of A) {
+    top += "<td>" + ch + "</td>";
+    bot += "<td>" + caesar(ch, shift) + "</td>";
+  }
+  $("tbl").innerHTML = "<tr>" + top + "</tr><tr>" + bot + "</tr>";
+  if (!$("brute").hidden) brute();
+}
+
+function brute() {
+  let s = "";
+  for (let i = 1; i <= 25; i++) s += "Kunci " + String(i).padStart(2, " ") + ": " + caesar($("inp").value, -i) + "\n";
+  $("bruteOut").textContent = s;
+}
+
+function setMode(m) {
+  mode = m;
+  $("mEnc").setAttribute("aria-pressed", m === "enc");
+  $("mDec").setAttribute("aria-pressed", m === "dec");
+  run();
+}
+
+$("mEnc").onclick = () => setMode("enc");
+$("mDec").onclick = () => setMode("dec");
+$("inp").oninput = run;
+$("key").oninput = () => { $("keyN").value = $("key").value; run(); };
+$("keyN").oninput = () => { $("key").value = k(); run(); };
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("out").textContent); $("copy").textContent = "Tersalin"; }
+  catch (e) { $("copy").textContent = "Gagal menyalin"; }
+  setTimeout(() => $("copy").textContent = "Salin hasil", 1500);
+};
+$("swap").onclick = () => { $("inp").value = $("out").textContent; setMode(mode === "enc" ? "dec" : "enc"); };
+$("bruteBtn").onclick = () => {
+  $("brute").hidden = !$("brute").hidden;
+  if (!$("brute").hidden) brute();
+};
+run();
+</script>
+</body>
+</html>
